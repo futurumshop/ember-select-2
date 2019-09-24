@@ -311,43 +311,46 @@ var Select2Component = Ember.Component.extend({
       // for every object, check if its optionValuePath is in the selected
       // values array and save it to the right position in filteredContent
       var contentLength = get(content, 'length'),
-          unmatchedValues = values.length,
-          matchIndex;
+        unmatchedValues = values.length;
 
       // START loop over content
-      for (var i = 0; i < contentLength; i++) {
-        var item = contentIsArrayProxy ? content.objectAt(i) : content[i];
-        matchIndex = -1;
+      var findAllNestedChild = function (item, values, optionValuePath) {
+        var child,
+          totalAmountElement = values.length,
+          matchIndex;
+
+        if (totalAmountElement === allNestedChild.length) {
+          return allNestedChild;
+        }
+
+        matchIndex = values.indexOf("" + get(item, optionValuePath));
+        if (matchIndex !== -1) {
+          allNestedChild.push(item);
+        }
 
         if (item.children && item.children.length) {
           // take care of either nested data...
           for (var c = 0; c < item.children.length; c++) {
-            var child = item.children[c];
-            matchIndex = values.indexOf("" + get(child, optionValuePath));
-            if (matchIndex !== -1) {
-              filteredContent[matchIndex] = child;
-              unmatchedValues--;
-            }
-            // break loop if all values are found
-            if (unmatchedValues === 0) {
-              break;
-            }
+            child = item.children[c];
+            findAllNestedChild(child, values, optionValuePath);
           }
         }
-        // ...or flat data structure: try to match simple item
-        matchIndex = values.indexOf("" + get(item, optionValuePath));
-        if (matchIndex !== -1) {
-          filteredContent[matchIndex] = item;
-          unmatchedValues--;
-        }
+      }
+
+      for (var i = 0; i < contentLength; i++) {
+        var item = contentIsArrayProxy ? content.objectAt(i) : content[i];
+        var allNestedChild = [];
+        findAllNestedChild(item, values, optionValuePath);
+        //Remove duplicate from find categories
+        filteredContent = filteredContent.concat(allNestedChild.filter(function(obj, index, arr) {
+          return filteredContent.map(mapObj => mapObj['id']).indexOf(obj['id']) === -1;
+        }));
         // break loop if all values are found
-        if (unmatchedValues === 0) {
+        if (filteredContent.length === unmatchedValues) {
           break;
         }
       }
-      // END loop over content
-
-      if (unmatchedValues === 0) {
+      if (filteredContent.length === unmatchedValues) {
         self.set('_hasSelectedMissingItems', false);
       } else {
         // disable the select2 element if there are keys left in the values
